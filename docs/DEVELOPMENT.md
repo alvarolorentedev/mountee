@@ -99,9 +99,12 @@ both entitlements. For unsigned CI compilation checks use `COMPILE_ONLY=1`.
 The app bundle is `Mountee.app`, the app ID is `app.mountee`, and the extension
 ID is `app.mountee.fskit`. Since these are new identifiers, upgrading users
 must remove `/Applications/MacNTFS.app`, enable Mountee's extension, and add
-Mountee to Login Items again. The app copies existing diagnostic reports to
-the new support folder without deleting the originals. Existing and active
-mountpoints are not moved; fallback mounts use `~/Library/Mountee/Volumes`.
+Mountee to Login Items again. Once enabled, Mountee clears stale registrations
+for the old extension and duplicate Mountee app copies; remove those app copies
+from disk to prevent macOS from rediscovering them. The app copies existing
+diagnostic reports to the new support folder without deleting the originals.
+Existing and active mountpoints are not moved; fallback mounts use
+`~/Library/Mountee/Volumes`.
 
 ## Installer (CI)
 

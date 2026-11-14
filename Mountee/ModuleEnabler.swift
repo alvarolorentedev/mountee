@@ -43,7 +43,7 @@ enum ModuleEnabler {
         if isEnabled() == .enabled {
             return enabledOutcomeAfterMigration()
         }
-        let daemonError = FSKitDaemonEnablement.requestEnable(identifier: moduleID)
+        let daemonError = FSKitDaemonEnablement.requestState(identifier: moduleID, enabled: true)
         if let daemonError {
             do {
                 try addToEnabledList()
@@ -69,16 +69,31 @@ enum ModuleEnabler {
         return .failed("The module is listed but FSKit still reports the extension as disabled.")
     }
 
-    /// Removes the old module only after the replacement is active. On an
-    /// unreadable list, the old entry stays untouched and the app reports it.
+    /// Removes obsolete registrations only after the replacement is active.
     static func migrateLegacyEntryIfNeeded() -> String? {
         guard isEnabled() == .enabled else { return nil }
         do {
-            guard try replaceLegacyEntry() else { return nil }
+            let legacyPaths = try registeredExtensionPaths(for: legacyModuleID)
+            let currentPaths = try registeredExtensionPaths(for: moduleID)
+            let stalePaths = extensionPathsToRemove(
+                legacy: legacyPaths,
+                current: currentPaths,
+                active: Bundle.main.bundleURL.appendingPathComponent("Contents/Extensions/MounteeFSKit.appex")
+            )
+            guard !stalePaths.isEmpty else { return nil }
+            if !legacyPaths.isEmpty,
+               let error = FSKitDaemonEnablement.requestState(identifier: legacyModuleID, enabled: false) {
+                throw NSError(domain: "Mountee", code: 3, userInfo: [
+                    NSLocalizedDescriptionKey: "could not disable the legacy MacNTFS extension: \(error)",
+                ])
+            }
+            for path in stalePaths {
+                try runPlugInKit(["-r", path.path])
+            }
             restartAgent()
             return nil
         } catch {
-            return "Mountee is enabled, but the old FSKit entry could not be replaced: \(error.localizedDescription). The old entry was kept; retry after confirming Mountee is enabled in System Settings."
+            return "Mountee is enabled, but older FSKit extensions could not be cleaned up: \(error.localizedDescription). Remove older MacNTFS or Mountee app copies, then retry."
         }
     }
 
@@ -146,37 +161,47 @@ enum ModuleEnabler {
         try data.write(to: url, options: .atomic)
     }
 
-    /// Replaces legacy occurrences in place, preserving every unrelated entry
-    /// and refusing to rewrite a plist whose format is unknown.
-    private static func replaceLegacyEntry() throws -> Bool {
-        let url = listURL
-        guard FileManager.default.fileExists(atPath: url.path) else { return false }
-
-        var format = PropertyListSerialization.PropertyListFormat.binary
-        let data = try Data(contentsOf: url)
-        let plist = try PropertyListSerialization.propertyList(from: data, options: [], format: &format)
-        guard let modules = plist as? [String] else {
-            throw NSError(domain: "Mountee", code: 2, userInfo: [
-                NSLocalizedDescriptionKey: "the existing FSKit enablement list has an unexpected format",
-            ])
+    private static func registeredExtensionPaths(for identifier: String) throws -> [URL] {
+        let output = try runPlugInKit(["-m", "-D", "-A", "-i", identifier, "-vv"])
+        return output.split(whereSeparator: \.isNewline).compactMap { line in
+            let line = line.trimmingCharacters(in: .whitespaces)
+            guard line.hasPrefix("Path = ") else { return nil }
+            return URL(fileURLWithPath: String(line.dropFirst("Path = ".count)))
         }
-        guard let updated = replacingLegacyModuleIDs(in: modules) else { return false }
-        let updatedData = try PropertyListSerialization.data(fromPropertyList: updated, format: format, options: 0)
-        try updatedData.write(to: url, options: .atomic)
-        return true
     }
 
-    static func replacingLegacyModuleIDs(in modules: [String]) -> [String]? {
-        guard let firstLegacyIndex = modules.firstIndex(of: legacyModuleID) else { return nil }
-        var updated = modules.filter { $0 != legacyModuleID }
-        if !updated.contains(moduleID) {
-            updated.insert(moduleID, at: min(firstLegacyIndex, updated.count))
+    static func extensionPathsToRemove(legacy: [URL], current: [URL], active: URL) -> [URL] {
+        let activePath = active.resolvingSymlinksInPath().standardizedFileURL.path
+        var seen = Set<String>()
+        return (legacy + current.filter {
+            $0.resolvingSymlinksInPath().standardizedFileURL.path != activePath
+        }).filter {
+            seen.insert($0.resolvingSymlinksInPath().standardizedFileURL.path).inserted
         }
-        return updated
+    }
+
+    @discardableResult
+    private static func runPlugInKit(_ arguments: [String]) throws -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/pluginkit")
+        process.arguments = arguments
+        let output = Pipe()
+        process.standardOutput = output
+        process.standardError = output
+        try process.run()
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        let result = String(decoding: data, as: UTF8.self)
+        guard process.terminationStatus == 0 else {
+            throw NSError(domain: "Mountee", code: Int(process.terminationStatus), userInfo: [
+                NSLocalizedDescriptionKey: result.trimmingCharacters(in: .whitespacesAndNewlines),
+            ])
+        }
+        return result
     }
 
     /// SIGKILLs the user's `fskit_agent`; launchd respawns it on the next FSKit
-    /// request with the updated list. SIGTERM is ignored by the agent.
+    /// request with the updated registrations. SIGTERM is ignored by the agent.
     @discardableResult
     private static func restartAgent() -> Int32 {
         let process = Process()

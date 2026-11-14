@@ -75,6 +75,10 @@ This release changes the app and FSKit identifiers. Existing diagnostic reports 
 removing the originals. Existing or active mountpoints are left in place; new
 fallback mounts use `~/Library/Mountee/Volumes`.
 
+Once the current extension is enabled, Mountee removes stale registrations for
+the old MacNTFS extension and duplicate Mountee app copies. Remove older app
+copies from disk as macOS can rediscover extensions that remain installed.
+
 That's it. No reboot, no Recovery Mode, no security settings to change. This is
 per-user: enable the extension once in each macOS account that should mount
 drives.

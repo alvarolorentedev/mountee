@@ -24,6 +24,9 @@ Symptoms observed while building and using Mountee, with causes and actions.
   re-enable:
   `pluginkit -r <stale-appex>`, `pluginkit -a <appex>`,
   `pkill -9 -f MounteeFSKit.appex`, `mountee --enable-extension`.
+- **Cleanup:** after the current extension is enabled, Mountee removes old
+  MacNTFS registrations and duplicate Mountee registrations. Delete old app
+  copies too; macOS can rediscover extension bundles that remain on disk.
 - **Note:** ad-hoc or `COMPILE_ONLY=1` builds cannot be enabled — AMFI kills
   the extension. Always enable a build produced by `scripts/build-signed.sh`.
 
