@@ -1,136 +1,123 @@
 # Mountee
 
-**[mountee.app](https://mountee.app) — NTFS read/write on macOS, without a kernel
-extension, macFUSE, or security compromises.**
+**Read and write NTFS drives on your Mac.**
 
-Mountee is a free, open-source (GPL-3.0) NTFS driver and menu bar app for Apple
-Silicon Macs. It builds on Apple's FSKit framework and the upstream ntfs-3g
-engine, so it mounts NTFS drives with full read/write access from user space:
-nothing to approve in Recovery Mode, nothing to downgrade, nothing left behind
-after you remove it.
+Plug in a Windows-formatted drive, choose **Read-Only** or **Read/Write** from
+the menu bar, and open it in Finder. Mountee is free and open source, uses
+Apple's FSKit, and needs no kernel extension or macFUSE.
 
-Status: **0.3.3** — read/write verified on **macOS 27.0.1** and **macOS 26.6.2**
-(Apple Silicon).
+[Download Mountee](https://github.com/alvarolorentedev/mountee/releases/latest/download/Mountee.dmg) · [mountee.app](https://mountee.app) · [View on GitHub](https://github.com/alvarolorentedev/mountee)
+
+**macOS 26 or later · Apple Silicon · GPL-3.0**
+
+<p align="center">
+  <img src="docs/images/mountee-preview.svg" alt="Mountee menu bar preview showing an NTFS drive and read-only or read/write mount options" width="100%">
+</p>
+
+## Use it in three steps
+
+1. Download and open **Mountee.dmg**.
+2. Drag **Mountee.app** to **Applications**, then launch it.
+3. Click **Enable File System Extension** once for your macOS account. Plug in
+   an NTFS drive, choose **Mount Read-Only** or **Mount Read/Write**, then open
+   the mounted drive in Finder.
+
+That's it. No Homebrew, separate driver install, Recovery Mode, or reboot.
+Enabling the extension is per macOS account, so repeat step 3 for each account
+that should use Mountee.
 
 ## Why Mountee
 
-- **No kernel extension.** Built on Apple's FSKit framework, so there is no
-  kext to approve, no Reduced Security, no SIP changes and no reboot. Your Mac
-  stays at Full Security.
-- **No macFUSE.** The ntfs-3g engine is compiled into the app. There is
-  nothing else to install and no Homebrew at runtime.
-- **Safe by default.** Volumes mount read-only; read/write is an explicit
-  per-volume action. Dirty or Windows-hibernated volumes (Fast Startup) are
-  never mounted read/write. Mountee never formats, repairs or erases anything.
-- **Honest about failure.** Unsupported operations return `ENOTSUP` and
-  metadata files can never be deleted — nothing reports a false success.
-- **Free and open source.** GPL-3.0, auditable, with a pinned and SHA-256
-  verified ntfs-3g build.
-- **Native experience.** Volumes appear under `/Volumes` like any other disk;
-  a menu bar app lists them with mounting, unmounting, ejecting and
-  reveal-in-Finder.
-
-## How it compares
-
-| | **Mountee** | macOS built-in | macFUSE + ntfs-3g | Paragon / Tuxera |
-|---|---|---|---|---|
-| NTFS read | Yes | Yes | Yes | Yes |
-| NTFS write | Yes | No | Yes | Yes |
-| Kernel extension | **No** (FSKit, user space) | No | Yes¹ | Yes |
-| Security changes | **None** | None | Reduced Security¹ | Reduced Security |
-| Reboot to install | No | — | Yes¹ | Yes |
-| Cost | Free | Included | Free | ~$15–30 |
-| Open source | GPL-3.0 | — | Yes | No |
-| Kernel code to break on OS updates | None | None | Yes | Yes |
-
-¹ Recent macFUSE releases include an experimental FSKit backend that avoids
-the kext, but the established macFUSE + ntfs-3g setup still uses the kernel
-backend, which requires disabling third-party kext protection in Recovery Mode
-and restarting.
-
-The built-in macOS driver is read-only. Commercial drivers work well, but they
-are paid, closed source, and historically depend on kernel extensions that
-break with macOS updates and require lowering your Mac's security. Mountee is a
-free, open-source option that gets read/write without either.
+- **Read and write, when you choose.** Apple's built-in NTFS support is
+  read-only. Mountee adds an explicit read/write option for each drive.
+- **No kernel extension or macFUSE.** Mountee uses Apple's FSKit and includes
+  the NTFS engine in the app.
+- **Safe by default.** Drives mount read-only unless you choose read/write.
+  Dirty or Windows-hibernated volumes stay read-only, even when you request
+  read/write.
+- **A native Mac workflow.** Drives appear in Finder and at `/Volumes`; manage
+  mounting, ejecting, and revealing them from the menu bar.
+- **Free and open source.** GPL-3.0, with a pinned, SHA-256-verified ntfs-3g
+  build.
 
 ## Requirements
 
-- **macOS 26 or later**, Apple Silicon. Verified on macOS 26.6.2 and 27.0.1.
-- Nothing else. No macFUSE, no Homebrew, no admin tools.
+- macOS 26 or later on Apple Silicon. Read/write has been verified on macOS
+  26.6.2 and 27.0.1.
+- No additional software or runtime dependencies.
 
-## Install
+## Safety and limits
 
-1. Download [Mountee.dmg](https://github.com/alvarolorentedev/mountee/releases/latest/download/Mountee.dmg)
-   and open it.
-2. If upgrading, quit and remove `/Applications/MacNTFS.app` first. Drag
-   **Mountee.app** to `/Applications` and launch it.
-3. Press **Enable File System Extension** in the menu bar window. Add
-   Mountee to Login Items again when prompted.
+Mountee never formats, repairs, or erases a drive. A volume marked dirty or
+left hibernated by Windows Fast Startup is mounted read-only. Mountee is still
+young (0.3.3), so back up valuable drives before using read/write. Crash
+consistency during power loss has not been fault-injection tested.
 
-Mountee checks GitHub Releases for updates in the background and asks before
-installing. Choose **Check for Updates…** in the menu to check immediately.
+POSIX permissions are not mapped yet, and symlinks, hard links, extended
+attributes, and resource forks are unsupported. See the [full limitations
+list](docs/LIMITATIONS.md) before relying on features your workflow needs.
 
-This release changes the app and FSKit identifiers. Existing diagnostic reports are copied from
-`~/Library/Application Support/MacNTFS` into the new support folder without
-removing the originals. Existing or active mountpoints are left in place; new
-fallback mounts use `~/Library/Mountee/Volumes`.
+## Help and project
 
-Once the current extension is enabled, Mountee removes stale registrations for
-the old MacNTFS extension and duplicate Mountee app copies. Remove older app
-copies from disk as macOS can rediscover extensions that remain installed.
+- [Troubleshooting and diagnostics](docs/DIAGNOSTICS.md)
+- [Development and architecture](docs/DEVELOPMENT.md)
+- [Validation details](docs/VALIDATION.md)
+- [License](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.md)
 
-That's it. No reboot, no Recovery Mode, no security settings to change. This is
-per-user: enable the extension once in each macOS account that should mount
-drives.
+<details>
+<summary>Upgrading from MacNTFS?</summary>
 
-## Use
+Quit and remove `/Applications/MacNTFS.app` before installing Mountee. Launch
+the new app and enable its file system extension. Mountee copies existing
+diagnostic reports and leaves active mounts in place; remove older app copies
+so macOS cannot rediscover their extensions.
 
-The menu bar lists every NTFS volume Disk Arbitration reports.
+</details>
 
-- **Mount Read-Only** — default action; writes are refused.
-- **Mount Read/Write** — explicit opt-in; still refused (mounts read-only) when
-  the volume is dirty or hibernated.
-- **Unmount**, **Eject**, **Reveal**, **Details** — per volume.
-- **Open Mountee at login** — toggle to start the app automatically; offered
-  once on first launch, defaulting to on.
-- **Copy Diagnostics** — copies a troubleshooting report to the clipboard.
+<details>
+<summary>Uninstall Mountee</summary>
 
-Mounted volumes appear in Finder and `/Volumes` like any other disk. To
-uninstall: eject all volumes, disable the extension in System Settings →
-General → Login Items & Extensions → File System Extensions, then delete
-`/Applications/Mountee.app` and its support data under
-`~/Library/Application Support/Mountee` and `~/Library/Mountee`.
+Eject mounted volumes, then turn off Mountee under **System Settings → General
+→ Login Items & Extensions → File System Extensions**. Quit Mountee and remove
+`/Applications/Mountee.app`. To delete saved diagnostics and other app support
+data too, remove `~/Library/Application Support/Mountee` and
+`~/Library/Mountee`.
 
-## Safety model
+</details>
 
-- Read-only by default; read/write is a per-volume explicit action.
-- Dirty and hibernated volumes (Windows Fast Startup) are never mounted
-  read/write — they mount read-only with the reason logged.
-- Never formats, repairs or erases anything, even when asked to.
-- Metadata files (`mft_no < 16`) can never be unlinked.
-- Unsupported operations return `ENOTSUP`; nothing reports false success.
+## Contributing
 
-## Maturity and limitations
+Contributions are welcome.
 
-Mountee is young (0.3.3). The write path is verified with content hashes across
-remounts on disposable images, but treat read/write on valuable disks like any
-new driver: keep backups and try it on non-critical data first. The safety
-gates above are the main protection against the classic NTFS corruption cases.
+You can help by:
 
-Known limits include: no POSIX permission mapping yet, no symlinks/hard
-links/extended attributes, and fsync delivery is not fault-injection tested.
-The full list lives in [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
+- opening bug reports
+- proposing features
+- improving documentation
+- testing Android and iOS builds
+- submitting pull requests
+- helping reproduce compatibility issues with new OpenCode releases
 
-## Documentation
+Read the [contributing guide](CONTRIBUTING.md), [Code of Conduct](CODE_OF_CONDUCT.md),
+[security policy](SECURITY.md), and [support guide](SUPPORT.md). Browse the
+[issue tracker](https://github.com/alvarolorentedev/opencode-mobile/issues) or open a PR.
 
-- [docs/LIMITATIONS.md](docs/LIMITATIONS.md) — full known-limitations list.
-- [docs/DIAGNOSTICS.md](docs/DIAGNOSTICS.md) — troubleshooting symptoms,
-  causes and actions.
-- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — architecture, build, signing
-  and release CI.
-- [docs/VALIDATION.md](docs/VALIDATION.md) — release validation checklist.
+## ❤️ Support Us
 
-## License
+Mountee is free and open source.
 
-Mountee is GPL-3.0 (`LICENSE`). It statically links ntfs-3g (GPL-2.0-or-later);
-see `THIRD_PARTY_NOTICES.md` for versions, hashes and attribution.
+If the project is useful to you, you can help support continued development, testing, releases, and infrastructure through:
+
+- GitHub Sponsors
+- Ko-fi
+- PayPal
+- Bitcoin
+- Ethereum
+
+[**Support Us →**](https://mountee.app/support/)
+
+<a href="https://github.com/alvarolorentedev/mountee/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=alvarolorentedev/mountee" />
+</a>
+
+Made with [contrib.rocks](https://contrib.rocks).
