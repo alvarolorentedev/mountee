@@ -43,7 +43,7 @@ enum ModuleEnabler {
         if isEnabled() == .enabled {
             return enabledOutcomeAfterMigration()
         }
-        let daemonError = FSKitDaemonEnablement.requestState(identifier: moduleID, enabled: true)
+        let daemonError = FSKitDaemonEnablement.requestEnable(identifier: moduleID)
         if let daemonError {
             do {
                 try addToEnabledList()
@@ -81,12 +81,6 @@ enum ModuleEnabler {
                 active: Bundle.main.bundleURL.appendingPathComponent("Contents/Extensions/MounteeFSKit.appex")
             )
             guard !stalePaths.isEmpty else { return nil }
-            if !legacyPaths.isEmpty,
-               let error = FSKitDaemonEnablement.requestState(identifier: legacyModuleID, enabled: false) {
-                throw NSError(domain: "Mountee", code: 3, userInfo: [
-                    NSLocalizedDescriptionKey: "could not disable the legacy MacNTFS extension: \(error)",
-                ])
-            }
             for path in stalePaths {
                 try runPlugInKit(["-r", path.path])
             }

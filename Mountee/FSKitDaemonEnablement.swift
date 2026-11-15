@@ -22,16 +22,16 @@ enum FSKitDaemonEnablement {
     }
 
     /// Returns nil on success, otherwise a description of why every attempt failed.
-    static func requestState(identifier: String, enabled: Bool) -> String? {
-        if let firstError = attemptForIdentifier(identifier, enabled: enabled) {
-            if let secondError = attemptPlain(identifier, enabled: enabled) {
+    static func requestEnable(identifier: String) -> String? {
+        if let firstError = attemptForIdentifier(identifier) {
+            if let secondError = attemptPlain(identifier) {
                 return "setEnabledStateForIdentifier: \(firstError) | setEnabledState: \(secondError)"
             }
         }
         return nil
     }
 
-    private static func attemptForIdentifier(_ identifier: String, enabled: Bool) -> String? {
+    private static func attemptForIdentifier(_ identifier: String) -> String? {
         let connection = NSXPCConnection(machServiceName: serviceName, options: [])
         connection.remoteObjectInterface = NSXPCInterface(with: EnableForIdentifierProtocol.self)
         connection.resume()
@@ -45,7 +45,7 @@ enum FSKitDaemonEnablement {
         } as? EnableForIdentifierProtocol
 
         guard let proxy else { return "could not create remote proxy" }
-        proxy.setEnabledStateForIdentifier(identifier, newState: enabled) { error in
+        proxy.setEnabledStateForIdentifier(identifier, newState: true) { error in
             if let error { failure = error.localizedDescription }
             semaphore.signal()
         }
@@ -55,7 +55,7 @@ enum FSKitDaemonEnablement {
         return failure
     }
 
-    private static func attemptPlain(_ identifier: String, enabled: Bool) -> String? {
+    private static func attemptPlain(_ identifier: String) -> String? {
         let connection = NSXPCConnection(machServiceName: serviceName, options: [])
         connection.remoteObjectInterface = NSXPCInterface(with: EnablePlainProtocol.self)
         connection.resume()
@@ -69,7 +69,7 @@ enum FSKitDaemonEnablement {
         } as? EnablePlainProtocol
 
         guard let proxy else { return "could not create remote proxy" }
-        proxy.setEnabledState(identifier, newState: enabled) { error in
+        proxy.setEnabledState(identifier, newState: true) { error in
             if let error { failure = error.localizedDescription }
             semaphore.signal()
         }
